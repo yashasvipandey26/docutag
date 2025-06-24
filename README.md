@@ -25,11 +25,11 @@ DocuTag is a smart web application that automatically extracts meaningful metada
 ## Folder Structure
 
 docutag/
-├── app.py # Streamlit app (UI)
+├── app.py # Streamlit app 
 ├── utils.py # Core backend logic and NLP functions
 ├── requirements.txt # Dependencies for setup
-├── README.md # Project overview and instructions
-└── sample_files/ # (Optional) Sample documents to test
+├── README.md 
+└── sample_files/ # Sample documents to test
 
 
 ---
@@ -39,7 +39,7 @@ docutag/
 1. **Clone the repository:**
 
 
-git clone https://github.com/yourusername/docutag.git
+git clone https://github.com/yashasvipandey26/docutag.git
 cd docutag
 
 2. **Install dependencies:**

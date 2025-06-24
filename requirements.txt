@@ -8,3 +8,4 @@ keybert
 transformers
 torch
 sentence-transformers
+spacy

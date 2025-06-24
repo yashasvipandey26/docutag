@@ -7,9 +7,12 @@ import pdfplumber
 from PIL import Image
 from keybert import KeyBERT
 from transformers import pipeline
+import spacy
+
+nlp = spacy.load("en_core_web_sm") 
 
 kw_model = KeyBERT()
-summarizer = pipeline("summarization", model="Falconsai/text_summarization")
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
 
 # ──────── 1. Extract Title & Author from PDF Layout ─────────
 def extract_title_author_from_pdf_bytes(pdf_bytes):
@@ -35,16 +38,29 @@ def extract_author_from_text(text):
     lines = text.strip().split('\n')
     lines = [line.strip() for line in lines if 3 < len(line.strip()) < 100]
 
-    # 1. Look for lines starting with "Dr.", "Prof.", etc.
-    for line in lines[:15]:
-        if re.match(r"^(Dr\.|Prof\.|Mr\.|Ms\.)", line):
-            return line.strip().title()
+    # 1. Academic title line (Dr., Prof.)
+    for line in lines:
+        if re.match(r"^(Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)", line):
+            return line.title()
 
-    # 2. Look for a capitalized line with 2–4 words (likely a name)
-    for line in lines[:10]:
-        if line.count(" ") in [1, 2, 3] and line[0].isupper():
-            if all(w[0].isupper() for w in line.split() if w.isalpha()):
-                return line.strip().title()
+    # 2. Line with "by" or "submitted by"
+    for line in lines:
+        if re.match(r"(?i)^(by|submitted by)[:\-]?\s*(.+)", line):
+            name = re.sub(r"(?i)^(by|submitted by)[:\-]?", "", line).strip()
+            return name.title()
+
+    # 3. Named Entity Recognition
+    doc = nlp(" ".join(lines[:30]))
+    for ent in doc.ents:
+        if ent.label_ == "PERSON" and 1 <= len(ent.text.split()) <= 4:
+            return ent.text.title()
+
+    # 4. Fallback: line before date
+    for i, line in enumerate(lines):
+        if re.search(r"\d{4}", line):
+            if i > 0 and 1 <= len(lines[i - 1].split()) <= 4:
+                return lines[i - 1].title()
+            break
 
     return "Not found"
 
@@ -90,33 +106,34 @@ def extract_keywords(text, num=5):
 
 # ──────── 5. Extract Summary ─────────
 def extract_summary(text):
-    text = text.replace('\n', ' ')
-    paras = re.split(r'\.\s+', text)
-    start = '. '.join(paras[:5])
+    cleaned = text.replace('\n', ' ')
+    start = cleaned[:2000]  # Use more context
 
     if len(start) < 300:
         return "Text too short to summarize."
 
     try:
-        summ = summarizer(start, max_length=120, min_length=40, do_sample=False)[0]['summary_text']
-        return summ.strip().replace("This article", "This document")
+        summary = summarizer(start, max_length=130, min_length=50, do_sample=False)[0]['summary_text']
+        return summary.replace("This article", "This document").strip()
     except Exception as e:
-        return "Summary not available (" + str(e) + ")"
+        return f"Summary not available ({str(e)})"
 
 # ──────── 6. Extract Date ─────────
 def extract_date(text):
-    # Format: November 12, 2024
-    match1 = re.search(r"(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}", text, re.IGNORECASE)
+    intro_text = text[:1000]
+
+    # 1. Match: May 2024, January 1 2023, etc.
+    match1 = re.search(r"(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}", intro_text, re.IGNORECASE)
     if match1:
-        return match1.group(0)
+        return match1.group(0).title()
 
-    # Format: 12 November 2024
-    match2 = re.search(r"\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}", text, re.IGNORECASE)
+    # 2. Match: 1 January 2023
+    match2 = re.search(r"\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}", intro_text, re.IGNORECASE)
     if match2:
-        return match2.group(0)
+        return match2.group(0).title()
 
-    # Format: 12/11/2024 or 12-11-2024
-    match3 = re.search(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", text)
+    # 3. Match: 01/01/2023 or 01-01-2023
+    match3 = re.search(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b", intro_text)
     if match3:
         return match3.group(0)
 
@@ -137,7 +154,7 @@ def map_to_topics(keywords):
     found = {t for t, kwlist in topics.items() for kw in keywords for w in kwlist if kw in w.lower()}
     return list(found) if found else ["Uncategorized"]
 
-# ──────── 8. Master Metadata Extractor ─────────
+# ──────── 8. Final Metadata Extractor ─────────
 def extract_metadata(file, filetype):
     raw_text, pdf_bytes = extract_text(file, filetype)
     cleaned = clean_text(raw_text)
