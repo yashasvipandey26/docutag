@@ -1,0 +1,10 @@
+streamlit
+pdfplumber
+pymupdf
+python-docx
+pytesseract
+Pillow
+keybert
+transformers
+torch
+sentence-transformers
