@@ -54,6 +54,6 @@ streamlit run app.py
 ---
 ## Demo Video
 
-🔗 [Watch the demo](https://drive.google.com/your-video-link-here)
+🔗 [Watch the demo](https://drive.google.com/drive/folders/1EK_NSyOi0oe5Jb9Fj79YZb1809r5AiJF?usp=sharing)
 
 ---
