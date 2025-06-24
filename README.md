@@ -25,13 +25,11 @@ DocuTag is a smart web application that automatically extracts meaningful metada
 ## Folder Structure
 
 docutag/
-├── app.py # Streamlit web application
-├── utils.py # Core backend logic (text + metadata extraction)
-├── docutag_demo.ipynb # Jupyter notebook demo of full backend logic
-├── requirements.txt # Python dependencies
-├── README.md # Project overview and setup guide
-└── sample_files/ # (Optional) Test documents
-
+├── app.py               # Streamlit web application
+├── utils.py             # Core backend logic (text + metadata extraction)
+├── docutag_demo.ipynb   # Jupyter notebook demo of full backend logic
+├── requirements.txt     # Python dependencies
+└── README.md            # Project overview and setup guide
 
 ---
 
